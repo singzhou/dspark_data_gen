@@ -1,0 +1,633 @@
+{
+    "id": "1014_7zh_skill_session-9d33f828-6e9a-4330-ac0b-4eab0fd1d1a3_part1_2",
+    "session_id": "session-9d33f828-6e9a-4330-ac0b-4eab0fd1d1a3_part1",
+    "category": "1014_7zh_skill",
+    "split_type": "final_answer",
+    "split_index": 2,
+    "conversations": [
+        {
+            "role": "system",
+            "content": "# Agent 身份\n你是核心网运维 Agent，负责理解用户输入，结合上下文和本轮用户偏好，选择合适的 Skill 处理核心网运维相关问题。\n\n## 基本原则\n- **当用户询问与你的技术实现、版本代际、参数规模、联网能力等非运维业务相关的问题时，应基于“我是核心网运维助手”的定位，坦诚说明能力边界，不编造内部技术细节，并主动引导用户回归运维问题。具体措辞可灵活组织，但必须包含以下核心要素：**\n  - 明确自己是由**华为云核心网团队**基于大语言模型技术构建的智能助手，聚焦于云核心网运维场景。\n  - 无法访问外部网络或进行实时检索（除非有内置知识或用户提供文档，可据此分析）。\n  - 技术细节（如参数规模、权重、架构版本等）属于内部信息，不予公开。\n  - 核心价值在于解决实际的网络运维问题（故障诊断、数据查询、配置指导等），鼓励用户直接描述运维诉求。\n  - 当被问及版本号时，默认回答 `0.0.1`。\n\n> 在回答上述边界问题时，可自由组合以上要点，用自然、友好的方式回应，但不得遗漏关键信息，也不得编造任何未提及的技术事实。\n\n# 系统\n\n## 基本原则\n\n- 不得编造业务数据、查询结果、告警信息、异常结论或诊断结论。\n- 不得擅自改变用户问题原意。\n- 清晰、完整、可执行的问题，应尽量保持原题。\n- 相对时间默认保持用户原表达，不主动换算为系统日期。\n- 用户偏好中明确给出的偏好、知识、别名、黑话映射，必须用于替换或标准化传给 Skill 的问题。\n\n## 能力范围\n\n| 场景                                                | skill/处理分类 |\n|---------------------------------------------------|-------|\n| 指标查询/统计、网络/设备状态查询、下发MML、查询具体资源实体/组件的版本号/版本信息 | 具备数据查询功能的Skill |\n| 具体网元、告警、异常对象的诊断处理                                 | 具备诊断功能的Skill |\n| 概念、协议、指标、告警含义、定位方法                                | 具备知识问答功能的Skill |\n| 投诉工单列表、投诉工单信息、特定工单处理结果                            | 具备投诉查询功能的Skill |\n| 高风险操作、超出skill能力范围问题（MML下发和采集日志不属于超限，应路由到对应Skill处理） | 超限 |\n| 当前问题逻辑极其混乱，无法理解用户意图时                              | 追问 |\n\n## 用户偏好\n\n用户偏好可以和每次问题一起输入，在此次会话中一直生效。\n\n用户偏好可能包含：\n\n| 类型 | 用途 |\n| ------------ | ------------------------------------------------ |\n| 角色 | 理解用户当前视角 |\n| 职责 | 判断前置结果满足条件后是否需要触发后续处理 |\n| 偏好 | 替换或标准化时间、地域、粒度、口径等表达 |\n| 知识 | 替换或标准化领域知识、别名、地理映射、协议解释等 |\n| 黑话映射表 | 替换或标准化用户输入中的黑话、简称、别名 |\n\n### 处理规则\n\n- 用户偏好必须参与本轮理解。\n- `偏好`、`知识`、`黑话映射表` 中存在明确映射时，必须替换或标准化传给 Skill 的问题。\n- 替换和标准化只能服务于理解用户原意，不得新增用户没有提出的对象、指标、时间、地域或动作。\n- 不得因为 `角色` 或 `职责` 直接改变用户问题类型。\n- `职责` 只能影响后续动作是否触发，不能替代用户原始意图。\n- `职责` 只能在前置 Skill 结果满足明确条件时触发后续动作。\n- 如果前置 Skill 结果未满足条件、无法判断条件，或返回信息不足，不得自行触发后续 Skill。\n\n示例：\n\n```\n职责：负责日常指标监控，如果指标存在异常就要启动自动诊断\n问题：最近北区SMF_001网元的PFCP会话更新是否有异常波动\n偏好：最近指最近3天（含今天）\n知识：北区指清迈府；PFCP指包转发控制协议\n```\n\n处理要求：\n1. 先调用查询类 Skill，判断清迈府 SMF_001 网元最近3天（含今天）的包转发控制协议会话更新是否存在异常波动。\n2. 只有查询结果明确显示存在异常时，才继续调用诊断类 Skill。\n3. 如果查询结果未显示异常、无法判断异常，或 Skill 返回信息不足，不得自行触发诊断。\n4. 不得直接把原问题改写成诊断问题。\n\n## 时间处理\n\n相对时间默认保持原表达；如果用户偏好中定义了时间含义，则按用户偏好替换为对应表达。\n\n| 用户输入或偏好 | 处理方式 |\n| ----------------------------- | ----------------------- |\n| 最近 | 保持\"最近\" |\n| 最近三天 | 保持\"最近三天\" |\n| 昨天 | 保持\"昨天\" |\n| 上周 | 保持\"上周\" |\n| 偏好：最近指最近3天（含今天） | 写成\"最近3天（含今天）\" |\n\n只有用户明确要求换算日期时，才输出具体日期。\n\n禁止在用户未要求的情况下，将相对时间强制转换为系统日期。\n\n# 任务处理\n\n## 路由规则\n\n| 用户意图          | 判断信号                                                                                                                                           | 处理方式                                                     |\n| ----------------- |------------------------------------------------------------------------------------------------------------------------------------------------| ------------------------------------------------------------ |\n| 查询类            | 查、统计、查看、对比、判断是否异常，查询具体资源实例的属性、功能、能力或状态，下发MML、查询具体资源实体/组件的版本号/版本信息                                                                              | 调用具备数据查询功能的Skill                                  |\n| 诊断类            | 诊断、分析原因、定位根因、处理建议、解决办法，且有具体对象                                                                                                                  | 调用具备诊断功能的Skill                                      |\n| 知识类            | **概念**：术语、协议、网元和特性的定义；工作原理；概念之间的差异。 **特性**：功能目的、应用场景、约束条件和参数。 **操作**：如何配置、开通、升级或验证；步骤和使用指南。 **故障**：关于故障描述、原因、告警级别、业务影响、原理、根源告警、恢复步骤和清除机制的静态知识。 | 使用Skill工具调用知识问答'knowledge-qa'                      |\n| 投诉类            | 查询投诉工单列表、投诉工单信息、特定工单处理结果                                                                                                                       | 调用具备投诉查询功能的Skill                                  |\n| 闲聊 / 通用回复类 | 你好、在吗、谢谢、好的、询问上文、简单计算、简单翻译、轻量常识问答                                                                                                              | 属于闲聊，通用回复即可                                       |\n| 超限类            | 修改、删除、重启、恢复、绕过权限、需要联网，超出可选skill范围                                                                                                              | 属于超限，拒答并回复原因。注意：MML下发和采集日志不属于超限，应路由到对应Skill处理 |\n| 模糊问题追问      | 当前问题只有动作，没有对象，或者逻辑极其混乱时                                                                                                                        | 属于模糊意图，向用户追问必要信息                             |\n\n## 闲聊处理\n\n以下情况按闲聊或通用回复处理：\n\n- 问候、寒暄、简单回应。\n- 用户询问 Agent 能力范围。\n- 用户询问当前对话中已经发生过的内容。\n- 简单计算、简单翻译、轻量常识问答。\n- 与核心网运维无关，但可以简短回答的轻量问题。\n\n### 处理要求\n\n- 不调用业务 Skill。\n- 不强行改写成运维问题。\n\n复杂、专业、长篇、需要外部互联网信息，或明显超出当前 Agent 定位的问题，不作为闲聊展开处理，视为超限。\n\n示例：\n\n用户：你好\n\n回答：你好，我是核心网运维Agent，请问有什么可以帮助您的？\n\n## 超限处理\n\n超出业务Skill功能范围，尤其是以下情况按超限处理：\n\n- 修改配置、下发配置、删除配置、恢复配置。\n- 重启网元、恢复业务、执行命令。\n- 绕过权限。\n- 请求真实接口执行高风险操作。\n- 明显超出业务Skill支持范围的问题。\n\n### 处理要求\n\n- 遇到超限类问题时，不调用业务 Skill，直接向用户澄清。\n- 不编造权限。\n- 不提供实际执行步骤。\n- 不输出可直接执行的操作命令。\n\n示例：\n\n用户：今天天气怎么样\n\n回答：对不起，我是运维agent，不支持天气查询\n\n### 特别说明\n\n对于能识别到skill意图，但不确定是否支持的一些宽泛问题，比如查询xx全部信息，导出全部操作等，此时不应直接判为超限或追问。应先调用相应的skill，根据Skill内部描述来进一步判断。\n\n## 追问处理\n\n以下情况按追问处理：\n\n- 用户问题模糊不清，无法支撑skill的选择。\n- 当前问题只有动作，没有对象，比如查一下，我想了解。\n\n### 处理要求\n\n- 不擅自补全用户未表达的业务动作。\n- 不将问题强行改写为查询、诊断、知识问答或其他具体任务。\n- 只追问当前缺失或不明确的信息。\n\n示例：\n\n用户：查一下\n回答：请问您具体想查一下什么呢？\n\n\n### 特别说明\n\n如果能识别到skill选择的具体意图，缺少一些动作或者参数，不需要追问，直接选取相关skill。问题专业性强，细节部分应交由skill流程判断：\n- 当用户输入为一个概念性的名词（如术语/告警/KPI名词），在无法匹配其他更具体意图的情况下，应当命中`knowledge-qa`做概念解释，不需要追问\n- 当用户问题明确指向具体实例（如具体网元、设备、虚拟资源名称），并询问该实例的功能、作用、组成、能力、是否支持或启用某功能、配置、状态等信息时，应调用具备数据查询功能的Skill。只有不涉及具体实例的纯概念问题才使用`knowledge-qa`\n- 当多轮交互，本轮问题和上一轮存在指代、关联关系时，应当先基于上一轮的问题和答案选择skill\n\n**示例：**\n- 第一轮：\n用户：alm-100155告警的含义\nAgent：用户询问告警的概念，使用Skill工具选择`knowledge-qa`知识问答skill，做概念解释\n- 第二轮：\n用户：USC网元的25.1.0版本\nAgent：根据上一轮交互可知，用户是在咨询告警，本轮应该继续调用`knowledge-qa`知识问答skill、传入原始问题和补充的信息，不应当追问。\n\n## 前置结果依赖处理\n\n当后续 Skill 是否调用、调用内容或调用参数依赖前置 Skill 结果时，必须先获得前置结果，再判断是否继续处理。\n\n### 处理要求\n\n- 后续 Skill 的调用条件必须由前置 Skill 结果明确满足。\n- 如果前置 Skill 结果未满足条件、无法判断条件，或返回信息不足，不得自行触发后续 Skill。\n- 如果后续 Skill 需要使用前置 Skill 返回的对象、指标、异常结论、工单 ID、taskId 或其他关键字段，应将这些信息补入传给后续 Skill 的问题。\n- 不得在前置结果尚未返回前，提前构造依赖前置结果的后续 Skill 入参。\n- 不得基于猜测补全前置结果中不存在的信息。\n\n示例：\n\n用户：最近 SMF_001 的 PFCP 会话更新是否异常？如果异常就分析原因。\n\n处理方式：\n\n1. 先调用查询类 Skill，查询 SMF_001 的 PFCP 会话更新是否异常。\n2. 如果查询结果明确显示异常，再调用诊断类 Skill。\n3. 如果查询结果未显示异常、无法判断异常，或返回信息不足，不调用诊断类 Skill。\n\n示例：\n\n用户：查一下 SMF_001 最近有没有异常\nSkill 返回：SMF_001 的 PFCP 会话更新存在异常波动\n用户：为什么？\n\n传给诊断类 Skill 的问题应为：\n\n```\n诊断 SMF_001 最近 PFCP 会话更新异常波动的原因\n```\n\n## 同类问题合并\n\n用户一个问题中包含多个同类对象、指标、地域、时间范围或查询条件时，如果这些内容属于同一个 Skill 能力范围，且不依赖前一步 Skill 返回结果，应合并为一次 Skill 调用。\n\n### 处理要求\n\n- 同一 Skill 可处理的多个对象、指标、地域、时间范围，应合并为一个独立问题传入 Skill。\n- 查询和异常判断均属于同一查询类 Skill 时，应合并为一次调用。\n- 不得将同一 Skill 可一次处理的问题拆成多次调用。\n- 如果后一步对象、条件或参数依赖前一步 Skill 返回结果，则不得提前合并。\n- 如果多个问题分别属于不同 Skill，应按实际依赖关系分别处理。\n- 如果用户问题存在多个可能理解，且无法唯一确定意图，应追问，不得强行合并。\n\n示例：\n\n用户：查一下 SMF_001 和 AMF_002 最近有没有告警。\n\n传给 Skill 的问题应为：\n\n```\n查一下 SMF_001 和 AMF_002 最近有没有告警\n```\n\n示例：\n\n用户：先查最近异常的网元，再查这些网元的详情。\n\n处理方式：不提前合并。先查询最近异常的网元，再根据返回结果查询对应网元详情。\n\n# 沟通风格\n\n- 直接回答用户问题，不绕弯子。\n- 保持简洁、专业。\n- 使用中文回复。\n\n# Agent 委托\n\n# 工具使用\n\n- 使用定义的 Skill（具备数据查询、诊断、知识问答、投诉查询功能）处理核心网运维任务。\n- 每个 Skill 有特定能力 - 根据用户意图选择合适的 Skill。\n- 路由到 Skill 时，直接传递处理后的问题，不要添加额外上下文。\n- 如需要，可以按顺序调用多个 Skill。\n- 不要猜测或使用未定义的 Skill。\n\n\n# Long-term memory\nYou have long-term memory tools that persist knowledge across sessions for the current user and agent. Memory is not loaded into this prompt — call the tools to recall it. How to call each tool (parameters, fields, result shape) is in its own tool description; this section covers when and what.\n\n## 1. `search_memory` tool and `get_memory_detail` tool\n###  When to use `search_memory` tool and `get_memory_detail` tool\nCall `search_memory` before answering questions that may involve facts, concepts, procedures, preferences, or anything saved from past sessions.\nCall `get_memory_detail` when a `search_memory` entry's briefIndex indicates relevant details are needed beyond the summary. Pass up to 20 longTermMemoryIds.\n#### User characteristics are injected automatically\nThe current user's `USER_CHARACTERISTICS` memory (preferences, constraints, working conventions) is loaded by the system and injected into the first turn of every session — you do **not** need to call `search_memory` to load it proactively. Treat the injected characteristics as defaults the user can override in the moment; if a stated preference conflicts with what the user just asked for, follow the current request.\nIf you need to look up a specific trait later (for example, the user references a preference that may have been saved mid-conversation), call `search_memory` with `categoryFilter: \"USER_CHARACTERISTICS\"` and a real `queryText` — do not omit `queryText`, since that switches the call to listing the whole category rather than keyword search.\n#### Recall on demand in later turns\nAfter the first turn, search reactively: call `search_memory` when the user's message plausibly references facts, configurations, procedures, or preferences saved from past sessions. If the category is uncertain, make exactly one broad search without `categoryFilter` rather than fanning out one call per category.\n\n## 2. `add_memory` tool\n### When to call it\nEither of the following two conditions triggers `add_memory`.\n**Trigger 1 — Explicit instruction**\nThe user tells you to remember something. Typical cues: \"Remember\", \"please remember\", \"help me store\", \"remember the above content\", \"remember the following content\", \"from now on\", \"later\", \"in the future\", \"default\", \"don't\", \"don't in the future\", \"default don't\" — and their equivalents in any language.\n**Trigger 2 — Clarifications supplied by the user**\nIf you asked the user to clarify a reusable definition, threshold, abbreviation, scope rule, or other stable information, and the user explicitly supplies the answer, it may be stored when it is useful across future sessions.\n\n### Rules\n- Extract every item. A single turn may contain several independent facts or definitions; each one gets its own call.\n- Never create values for optional fields. If the user does not specify any field, omit the field. For example, do not assign a value to the optional relatedConcepts field.\n- Before finishing any turn in which you wrote a confirmation, verify that an `add_memory` call is present. If it isn't, add it.\n- The skip list below applies to every trigger category — never bypass it because of the trigger source.\n\n### What not to save\n- Temporary session context or one-off debugging state.\n- Knowledge obtainable from public docs or search.\n- Large raw code, logs, or tables.\n- Inferred or unverified observations.\n- Content that may duplicate or conflict with existing memory — flag it for later rather than guessing.\n\n### Boundary\nWriting about something does not remember it.\n\"Got it\", \"Noted\", \"I'll remember that\" persist NOTHING — the information is gone when the turn ends. `add_memory` is the only mechanism that stores anything. Any acknowledgment of remembering is invalid unless an `add_memory` call goes out in the same turn.\n\n\n# 安全操作\n\n- 本 Agent 专注于查询、诊断、知识问答、投诉查询工单任务\n- 本 Agent不执行高风险操作，如修改配置、删除数据、重启网元、执行命令等，MML下发和采集日志不属于高风险操作\n- 不编造结果或绕过权限。\n- 保持用户问题的原始意图，不得编造信息。\n\n# 上下文管理\n\n- 用户偏好（角色、职责、偏好、知识、黑话映射表）仅对当前问题生效。\n- 将用户偏好应用于理解和路由每个问题。\n- 在整个对话过程中保持用户问题的原始意图。\n- 上下文被摘要时，使用摘要继续工作 - 不需要提前结束。\n- 当用户当前问题缺乏明确动作意图时，应结合对话上下文（前一轮 ASSISTANT 回复中提及的对象）推断意图，而非直接追问。\n\nWorkspace root: workspace/. File system access is restricted to this directory and its subdirectories.\n\n---[CACHE_BOUNDARY]---\n\n### Available skills\r\r\n- skill-creator: Create or refine NextAgent runtime local skills that fit the current skill manifest and skill resource boundaries. Use when the task is to draft, edit, validate, or converge a local skill manifest or skill folder for this system.\n- cn-complaint-question-data: ## 功能范围\n### 投诉问答能力\n1. 查询投诉工单列表\n- 支持查询全量或某一时间段的投诉工单列表；\n\n2. 处理或查询工单的结果\n- 支持查询投诉工单的处理结果\n\n### 处理/解决特定工单\n- 支持处理、解决工单，或指导用户处理工单\n\n## 判别依据\n### 命中依据\n1、当用户希望查询、了解全量或某一时段的投诉工单列表，应命中本意图。\n2、当用户希望处理、解决工单，查询工单结果时，应命中本意图。\n### 禁止命中依据\n1、本意图不支持非投诉类工单的查询。\n- cn-data-query: 运维监控数据查询 — 云/网KPI查询与统计、KPI周期报表、配置数据查询（MML命令）、告警查询、实体资源查询（包括网元、主机、设备、接口、FusionSphere等实体）、实体属性查询（如CPU、磁盘、内存等）、告警源查询、网络与设备状态查询、MML命令操作。可对提取的数据以柱状图、折线图、数据表格形式进行可视化展示。\n- cn-fault-spirit: ## 功能范围\n### 故障/告警诊断\n1. 仅支持对故障、告警、KPI指标的诊断。其他操作均不支持。\n\n## 判别依据\n### 命中依据\n 1、当用户问题明确要求诊断告警类故障或告警类异常时，应命中本意图；\n\n### 禁止命中依据\n 1、本意图不支持**查询**操作；\n 2、当用户询问某类故障/告警\"处理办法/处理方法/处理步骤/解决方案/恢复办法/原因分析\"等知识性内容时，必须禁止命中该意图。\n 3、本意图不支持对故障、告警、KPI指标的分析，仅支持诊断。\n- knowledge-qa:  ## 功能范围\n  支持回答期望了解华为ICT领域（如无线、云核心网、能源等）相关的知识信息，包括原理、概念、功能说明、操作方法、流程步骤或使用指导的问题；包括但不限于咨询以下知识：\n  - 故障/告警知识：支持回答产品默认发布的，对故障/告警描述、定位及恢复手段描述的知识，包括但不限于，告警级别、告警解释（描述、上报原因、主体类型、影响、工作原理、案例、根因告警等）、产生的可能原因、具体处理步骤、清除机制、相关参数等相关知识；\n  - 通用知识：产品默认发布的除告警包的所有知识；\n  - 客户私有知识：包括通过在线导入的客户知识、通过客户操作历史记录学习到的知识等。\n\n ## 判别依据\n  ### 命中依据\n  1、当咨询理论基础知识，而非需要借助工具查询实时数据时，应命中本意图。\n  2、若问题提问华为ICT领域相关的知识信息，包括原理、概念、功能说明、操作方法、流程步骤或使用指导等，问题重点在询问解释性内容，而非直接获取系统中的实时或历史数据结果，非借助工具操作动作，应命中本意图。\n  3、在无法匹配其他更具体意图的情况下，仅包含术语/告警/KPI名词、无明确动作动词的输入，默认命中本意图做概念解释。\n\n  ### 禁止命中依据\n  1、本意图不支持直接获取系统中的实时或历史数据结果。\n  2、本意图不支持查告警源，告警源属于需要实时查询的信息。\n- signal-file-analysis: ## 功能范围\n### 信令文件分析能力\n 1. 分析信令文件\n  - 支持对信令文件或管理面报文进行分析；\n\n## 判别依据\n### 命中依据\n 1、当用户希望对信令文件或管理面报文进行分析，获取推理结论。\n### 禁止命中依据\n 1、用户意希望分析数传类或用户面报文\r\r\n\r\r\n### How to use skills\n- Use the `Skill` tool only when the user request clearly matches one of the available skills above.\n- When you decide an available skill is needed, call the `Skill` tool immediately in the same assistant turn before producing the task answer.\n- Do not stop after stating that you need to call a skill or construct its arguments. Such planning text is incomplete and is not a final answer.\n- Construct task-specific ``args`` directly from the user's request instead of narrating their construction.\n- Set ``name`` to the exact skill name from the list. Do not invent or rewrite skill names.\n- Put only task-specific JSON input in ``args``. Do not include mode, timeout, provider, path, directory, budget, or other execution-governance fields.\n- Skills are governed capabilities. They are not filesystem paths, directories, or external packages.\n- Do not assume any skill exists unless it appears in the list above.\n- Do not refer to hidden implementation details such as local paths, package layout, source roots, loader keys, or internal provider identities.\n- If no available skill is a clear match, continue with normal tools and normal reasoning.\n- After a skill is loaded, follow the instructions it adds to context, but continue to obey higher-priority system, developer, and runtime constraints.\n- Do not claim a skill was used unless you actually called the `Skill` tool successfully.\n- If a skill call fails or the requested skill is unavailable, continue safely with other available tools when possible.\r\r\n\n\n  model=netmo-qwen3p6-27b; date=2026-10-14\n\n  linux 6.6.0-72.0.0.76.h21510.1249.eulerosv2r15.aarch64 (America/Chicago, 2026-10-14)\nLocale/language hint: zh-CN."
+        },
+        {
+            "role": "user",
+            "content": "\n武汉发生了和兰州相似的事件吗？\n"
+        },
+        {
+            "role": "assistant",
+            "content": "",
+            "reasoning_content": "The user is asking \"武汉发生了和兰州相似的事件吗？\" (Did a similar event to the one in Lanzhou happen in Wuhan?)\n\nThis is a follow-up question that references a previous context (\"和兰州相似的事件\" - similar to the event in Lanzhou). However, looking at the conversation history, there is no previous context about Lanzhou. This is the first message in the conversation.\n\nWait, let me re-read. The conversation shows this is the first user message. There's no prior context about Lanzhou.\n\nAccording to the rules:\n- \"当多轮交互，本轮问题和上一轮存在指代、关联关系时，应当先基于上一轮的问题和答案选择skill\" - but there's no previous turn here.\n- \"当用户当前问题缺乏明确动作意图时，应结合对话上下文（前一轮 ASSISTAIN 回复中提及的对象）推断意图，而非直接追问。\"\n\nBut there's no previous context. The user is asking about \"武汉发生了和兰州相似的事件吗？\" which references an event in Lanzhou that hasn't been established in this conversation.\n\nThis seems like a vague/ambiguous question. The user is asking whether a similar event to Lanzhou happened in Wuhan, but:\n1. There's no context about what event in Lanzhou they're referring to\n2. \"事件\" (event) is vague - could be an alarm, a fault, a KPI anomaly, etc.\n\nAccording to the routing rules:\n- 模糊问题追问: \"当前问题只有动作，没有对象，或者逻辑极其混乱时\" - 属于模糊意图，向用户追问必要信息\n\nBut wait, let me think about this more carefully. The question does have objects (武汉, 兰州) and an action (发生了...事件吗 - did it happen). But the \"事件\" is undefined - we don't know what event in Lanzhou they're referring to.\n\nThis could be a data query question if we knew what event they meant. But since \"兰州相似的事件\" is not defined in context, this is ambiguous.\n\nActually, let me reconsider. Maybe the user is referring to something from a previous session or context that I should look up in memory? Let me check if there's any memory about this.\n\nActually, according to the long-term memory section, I should search memory when the user's message plausibly references facts from past sessions. The user is asking about \"兰州相似的事件\" which might reference something from a past conversation. Let me search memory first.\n\nWait, but actually the question is quite ambiguous. \"事件\" could mean:\n- An alarm\n- A fault\n- A KPI anomaly\n- Some other network event\n\nAnd \"和兰州相似的事件\" - what event in Lanzhou? This is not defined.\n\nLet me think about whether I should:\n1. Search memory for context about Lanzhou\n2. Ask the user to clarify what event they're referring to\n\nI think I should first search memory to see if there's any context about Lanzhou events from past sessions. If not, I should ask for clarification.\n\nActually, let me reconsider the routing. The question \"武汉发生了和兰州相似的事件吗？\" is essentially asking to query whether a similar event happened in Wuhan. This is a query-type question. But the problem is we don't know what \"event\" refers to.\n\nLet me search memory first to see if there's any relevant context.\n\nHmm, but actually, I should be careful. The memory search is for the current user's long-term memory. Let me search for anything about 兰州 or 武汉.\n\nLet me do a broad search since the category is uncertain.\n",
+            "tool_calls": [
+                {
+                    "id": "chatcmpl-tool-91240294c7d19f8f",
+                    "type": "function",
+                    "function": {
+                        "name": "search_memory",
+                        "arguments": "{\"queryText\": \"兰州 武汉 事件\", \"limit\": 10}"
+                    }
+                }
+            ]
+        }
+    ],
+    "tools": [
+        {
+            "type": "function",
+            "function": {
+                "name": "Read",
+                "description": "Read a bounded slice from one authorized execution text file at a known file path.\n\nUse the exact path provided by the user or returned by an earlier file tool. Unqualified relative paths resolve under `workspace/`; use `workspace/...` for durable files and `temp/...` for current-run files. Verified Skill resources are read explicitly through `.nextagent/skills/...` and remain read-only. Read does not enumerate directories or search by name/content: use Glob for an unknown path pattern and Grep for cross-file content search.\n\nReturns `content`, a root-qualified canonical `file_path`, `offset`, `limit`, and truncation facts. Continue with `nextOffset` when more content is required. A full read from offset 0 with no truncation establishes the snapshot required to overwrite or edit an existing file. If the result reports paging required or file unavailable, follow that structured result rather than retrying the same input unchanged. When a slice exceeds the read budget the failure carries a `suggestedLimit` (in `safeError.safeDetails`); reuse the same `offset` with that `limit` on the next Read instead of guessing a smaller value.",
+                "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "file_path"
+                    ],
+                    "properties": {
+                        "file_path": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "Root-qualified path to read; a bare relative path aliases workspace/... and results return the canonical root-qualified path."
+                        },
+                        "offset": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "default": 0,
+                            "description": "Zero-based line offset to start reading from."
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 2000,
+                            "default": 2000,
+                            "description": "Maximum number of lines to return."
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "Glob",
+                "description": "Discover authorized workspace files when the exact path is unknown, using a bounded file-name or path glob pattern. Patterns support brace alternatives and character classes; for one file category with multiple extensions, prefer one covering pattern such as `**/*.{yaml,yml}` instead of separate calls. Usually pass only `pattern`; omitted `path` searches only authorized directories under `workspace/`. Optional `path` narrows the directory: a bare relative path aliases `workspace/...`, while another logical root such as `shared-data/...` must be explicit and separately authorized. It must not be a file or another glob pattern. Unknown input fields are rejected.\n\nDo not use Glob to confirm or read a known path, and do not use it for file-content search. Glob returns up to 500 root-qualified canonical filenames with `truncated`; it does not sort by modification time or identify the newest file. Use Bash with an appropriate governed command when metadata ordering is required.",
+                "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "pattern"
+                    ],
+                    "properties": {
+                        "pattern": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 4096,
+                            "description": "Required glob pattern to match execution files. Usually this is the only field to pass, e.g. `**/*.ts`, `src/**/*.json`, or `**/*.{yaml,yml}` for one file category with multiple extensions. Brace alternatives and character classes are supported."
+                        },
+                        "path": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 4096,
+                            "description": "Optional root-qualified directory to search within; a bare relative path aliases workspace/.... Omit it to search only authorized workspace directories. Do not pass null, undefined, a file path, or another glob pattern."
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "Grep",
+                "description": "Search authorized workspace text-file contents with a bounded ECMAScript regular expression. Use Grep when the target content may span unknown or multiple files; use Read for a known file and Glob for file-name/path discovery. Omitted `path` searches only authorized directories under `workspace/`. Optional `path` narrows the search: a bare relative path aliases `workspace/...`, while another logical root must be explicit and separately authorized.\n\n`output_mode: \"files_with_matches\"` returns root-qualified canonical filenames; `output_mode: \"content\"` also returns matching lines, canonical file paths, and line numbers. Use only the schema fields and ECMAScript regex syntax described here. `truncated=true` means the cap was reached and the result is incomplete.",
+                "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "pattern"
+                    ],
+                    "properties": {
+                        "pattern": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 4096,
+                            "description": "ECMAScript regular expression to search for."
+                        },
+                        "path": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 4096,
+                            "description": "Optional root-qualified directory to search within; a bare relative path aliases workspace/.... Omit it to search only authorized workspace directories."
+                        },
+                        "glob_filter": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 4096,
+                            "description": "Optional glob filter limiting which files are searched."
+                        },
+                        "output_mode": {
+                            "type": "string",
+                            "enum": [
+                                "files_with_matches",
+                                "content"
+                            ],
+                            "default": "files_with_matches",
+                            "description": "Return only matching filenames or include matching line content."
+                        },
+                        "case_insensitive": {
+                            "type": "boolean",
+                            "description": "Run a case-insensitive search when true."
+                        },
+                        "max_results": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 500,
+                            "description": "Maximum number of filenames or content matches to return."
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "Bash",
+                "description": "Execute one bounded local command through the governed sandbox boundary.\n\nWhen to use:\n- Run command-line operations such as builds, tests, packaging, version control, environment or system inspection, and an existing script or module.\n\nWhen NOT to use:\n- Prefer a dedicated file tool when it directly represents a known-path read/write/edit or structured name/content search.\n- To execute direct Python source in a `code` field, use Python; to launch an existing `.py` file, use Bash with the exact discovered path.\n\nKey behaviors:\n- `command` is tokenized and submitted through the sandbox gateway; executable authority is owned by the composed sandbox policy.\n- Bash supports two invocation modes. Command-string mode: put the full shell-like command string in `command`, do not provide `args`, and optionally use `env.PYTHONPATH` for Python imports.\n- Argv mode: set `command` to exactly one executable token and put every other token in `args`, including `-m`, script paths, flags, JSON, and user text.\n- Never split one command between `command` and `args`; when `args` is provided, `command` must be only the executable.\n- `env` supports only `PYTHONPATH`; other keys are rejected. `NEXTAGENT_USER_ID`/`USER_NAME`/`CHAT_ID`/`CONVERSATION_ID` are auto-prefixed for Python commands; never set them or put credentials/business params in `env`.\n- `clipc --params`: when a Skill opts in via `api_header_params`, runtime injects the declared `X-Subject-Id`/`X-Display-Name`; never set them manually.\n- For quote-heavy arguments such as JSON, Gremlin, SQL, regex, paths, or natural-language queries, prefer argv mode so each value is passed unchanged as one sandbox argv entry.\n- When using structured `args`, create JSON arguments with a JSON serializer so nested quotes remain valid inside a single argv entry.\n- Do not run inline Python with `python -c`, `python -`, or other Python CLI modes. Use Python with a `code` field for inline source; use Bash only for `python <script.py> ...`, `python -m package.module ...`, or exact `python --version` interpreter inspection.\n- Do not prefix commands with shell environment assignments such as `PYTHONPATH=... python ...`; use structured `env.PYTHONPATH` or let this compatibility layer normalize a single leading PYTHONPATH assignment.\n- Submit the executable and its arguments directly. Shell built-ins, chaining, and interpreter modes are forwarded to the sandbox gateway; validation-mode behavior is owned by the composed sandbox policy.\n- Reuse exact executable and script paths returned by earlier results. Quote arguments completely when they contain spaces or natural language.\n- Compatibility: direct `python`/`python3` execution of a `.py` file or direct `bash`/`sh` execution of a `.sh` file may resolve `scripts/...` or `<skill-name>/scripts/...` against the current verified Skill projections. Only one matching script is completed; multiple matches fail with root-qualified candidates.\n- Explicit root-qualified paths are never rewritten. Inline modes, shell wrappers, pipes, redirections, command substitutions, non-script resources, and arbitrary text arguments are not Skill-path corrected.\n- Timed-out commands return a safe timeout result.\n- stdout and stderr are each capped at 100 KB; inspect `stdoutTruncated` and `stderrTruncated` before treating output as complete.\n- A non-zero exit code is a normal completed result; the structured payload always includes exitCode, stdout, stderr, and truncation flags regardless of exit status.\n- Each invocation runs in its own process; working-directory and environment changes do not persist. Include the required path or state in every dependent invocation.\n- Run commands in the foreground by default. Set `run_in_background: true` ONLY for persistent processes (a server, daemon) or genuinely long-running tasks (a build/download that takes minutes); for anything that finishes quickly, the foreground returns the result immediately, so backgrounding it only delays the result to a later turn.",
+                "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "command"
+                    ],
+                    "properties": {
+                        "command": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 4096,
+                            "description": "Command text to tokenize and submit through the sandbox gateway. Use either command-string mode with the full shell-like command and no `args`, or argv mode with exactly one executable token here and every other token in `args`."
+                        },
+                        "args": {
+                            "type": "array",
+                            "maxItems": 100,
+                            "items": {
+                                "type": "string",
+                                "maxLength": 16384
+                            },
+                            "description": "Optional structured argv entries. Use this for JSON, Gremlin, SQL, regex, natural-language, paths, or other quote-heavy arguments so each value is passed unchanged as one sandbox argv entry."
+                        },
+                        "env": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "PYTHONPATH": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 4096,
+                                    "description": "Optional logical sandbox path for Python imports. Only use authorized workspace/temp/Skill resource paths; do not put this in the command string as PYTHONPATH=..."
+                                }
+                            },
+                            "description": "Narrow structured environment override. Only PYTHONPATH is accepted; NEXTAGENT_* keys are auto-injected by the runtime and cannot be set manually. Any other key is rejected."
+                        },
+                        "description": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 512,
+                            "description": "Short reason for running the command."
+                        },
+                        "timeout": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 600000,
+                            "description": "Requested timeout in milliseconds, capped by the trusted invocation context."
+                        },
+                        "timeout_ms": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 600000,
+                            "description": "Requested timeout alias in milliseconds, capped by the trusted invocation context."
+                        },
+                        "stream_format": {
+                            "type": "string",
+                            "enum": [
+                                "sse",
+                                "ndjson"
+                            ],
+                            "description": "Set when the command is expected to produce streaming structured output (SSE or NDJSON). Enables per-frame TOOL_STRUCTURED_DELTA emission during execution."
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "Rag",
+                "description": "Retrieve bounded knowledge chunks from the current Agent's governed knowledge sources.\n\nWhen to use:\n- This event is triggered when the build-in RAG tool is specified\n\nWhen NOT to use:\n- To search workspace files, use Grep.\n- To read a known file, use Read.\n\nKey behaviors:\n- Omit `indexes` to search the Agent's configured default logical indexes; pass `indexes` only when the user specified one or more index names.\n- If omitted-index retrieval reports `INDEX_NOT_FOUND`, `INDEX_NOT_READY`, `NO_INDEX`, `PROVIDER_UNAVAILABLE` or `TIMEOUT`, ask the user to specify an available index name.\n- `status`: `OK` returns results; `NO_INDEX`, `UNAVAILABLE`, `DEGRADED`, `FAILED`, `TIMEOUT`, `CANCELED` return `diagnostics.reason` with an empty `results` array.\n- Each result includes `content`, `source`, optional `title`, `score`, and `rankHint`.",
+                "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "query"
+                    ],
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 2048,
+                            "pattern": "\\S",
+                            "description": "Natural-language or keyword retrieval query."
+                        },
+                        "indexes": {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 5,
+                            "description": "Optional knowledge index names to search; omit to search the Agent default indexes.",
+                            "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128,
+                                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+                            }
+                        },
+                        "topK": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 10,
+                            "default": 5,
+                            "description": "Maximum number of chunks to return."
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "Skill",
+                "description": "Execute one governed Skill in the main conversation when its exact capability id is visible in the enabled Skill list or a ToolSearch result. Use ToolSearch first for a relevant deferred Skill that is not visible; do not guess a name or treat an undisclosed id as callable. Treat a slash command as a Skill only when the text after `/` exactly matches an available Skill; built-in CLI commands are not Skills. Set `name` to the exact capability id and put only task-specific JSON object data in `args`. Fields in `args` are task data only and do not change runtime execution governance. If Skill reports unavailable, undiscovered, timed out, canceled, or failed, follow that outcome and do not claim the Skill ran successfully.",
+                "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "name"
+                    ],
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128,
+                            "description": "Exact name of an available Skill listed in the system prompt."
+                        },
+                        "args": {
+                            "type": "object",
+                            "additionalProperties": true,
+                            "description": "Task-specific JSON object data. Fields do not change runtime timeout, child budget, or provider selection."
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "AskUserQuestion",
+                "description": "FREE-TEXT ANSWER HANDLING RULE:\n- Predefined options are suggestions, not an allowlist. Free-text is valid even when it does not match an option value or label.\n- Treat resolvedAnswers as authoritative: selections=[] means the user selected no predefined option. When customText is present without a selection, it is an independent natural-language answer; never claim or infer that the user selected an option.\n- Never reject a free-text answer, describe it as invalid, or ask the user to select again solely because it is outside the predefined options.\n- Interpret free text by its own natural-language meaning. Never coerce or map it to the closest predefined option when its literal intent differs from that option.\n- If free text expresses an intent not represented by the options, follow the free-text intent instead of the options; if it belongs to a different domain or target than the question, apply the ANSWER CLASSIFICATION RULE. If it provides enough information, continue directly.\n- If free text expresses a valid intent but lacks required information, preserve that exact intent and ask only for the missing information. Never ask the user to repeat, reselect, or reconfirm information already provided.\n\nANSWER CLASSIFICATION RULE:\n- Classify returned text before using it: if it answers the question, use it as the answer. If it is a new intent aimed at a different domain or target (any clear topic shift, not only imperatives), set the question aside and handle the new request; never force it into the answer slot.\n- Once confirmed as a new request, focus fully on it and treat the original question as closed. Do not re-ask, restate, loop back to, or otherwise resume the original question.\n\nAsk the user a clarification question. You MUST call this tool whenever you need to ask the user any ordinary question—never use plain assistant text to ask questions.\n\nWhen to use (mandatory):\n- A Skill returns FAILED because it needs user-provided information.\n- A Skill interaction requires the user to choose among known options or give short text.\n- User intent is ambiguous and cannot be resolved from context or available tools.\n- You need a follow-up, clarification, preference, implementation choice, or ordinary confirmation.\n\nHow to construct arguments:\n- questions must be a native JSON array of one to five question objects.\n- Omit options for free-text answers.\n- Include options for predefined choices, each with a unique value.\n- Set multiple=true only when the user may select more than one option.\n- Set question-level custom=true for one generic free-text answer alongside predefined options; do not add a synthetic custom option.\n- Users may provide free-text answers outside the predefined options regardless of whether custom=true is declared; reference and use such answers in subsequent steps.\n\nCRITICAL OPTION VALIDATION RULE:\n- An option may omit requiresTextInput only when selecting its value alone is a complete, immediately actionable answer.\n- If an option still needs a target, value, identifier, name, reason, description, correction, replacement, or any other detail before the task can continue, you MUST set requiresTextInput=true on it; add inputPlaceholder when useful, and do not combine such options with multiple=true.\n- Omitting requiresTextInput asserts the option is complete and executable as provided; never omit it when any required information remains unspecified.\n- Never request more information only through the option label. If the label asks or implies that the user should enter, specify, provide, change, replace, correct, describe, or explain something, you MUST set requiresTextInput=true.\n- Before returning the call, inspect every option: if clicking it without extra text would leave required information missing, you MUST set requiresTextInput=true.\n\nDo NOT use this tool for generic permission to proceed, plan approval, status acknowledgements, credentials, secrets, authorization grants, protected-operation approval, high-risk confirmations, human handoff, surveys, or long-form forms.",
+                "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "questions"
+                    ],
+                    "properties": {
+                        "questions": {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 5,
+                            "description": "Clarification questions posed to the user. Omit options when providing free-text answers; include options when predefined options are available. The maximum hard limit for the questions array is 5 questions. If the user's original intent includes more than 5 questions, the number of questions must not be arbitrarily reduced to bypass this limit. Instead, the assistant must switch to a regular assistant text to explain to the user that the tool supports a maximum of 5 questions and ask the user to refine and resubmit the questions. Calls exceeding 5 questions will be intercepted by the framework validation and will not be executed.",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                    "prompt"
+                                ],
+                                "allOf": [
+                                    {
+                                        "if": {
+                                            "properties": {
+                                                "options": {
+                                                    "contains": {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "requiresTextInput"
+                                                        ],
+                                                        "properties": {
+                                                            "requiresTextInput": {
+                                                                "const": true
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "options"
+                                            ]
+                                        },
+                                        "then": {
+                                            "properties": {
+                                                "multiple": {
+                                                    "const": false
+                                                }
+                                            }
+                                        }
+                                    }
+                                ],
+                                "properties": {
+                                    "prompt": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 1000,
+                                        "description": "The question text shown to the user."
+                                    },
+                                    "options": {
+                                        "type": "array",
+                                        "minItems": 2,
+                                        "maxItems": 20,
+                                        "description": "Provide users with 2 to 20 concise predefined options. Omit free-text questions. Each option must have a unique value. If selecting only one option still lacks any information required to proceed, that option must be set with requiresTextInput=true. The hard limit for options per question is 20; if more than 20 options are needed, you must not arbitrarily reduce them to bypass the limit. Instead, you must use regular assistant text to explain the limitation to the user or split the question into multiple parts for sequential inquiry. Calls exceeding 20 options will be intercepted by the framework validation without being executed.",
+                                        "items": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "required": [
+                                                "value",
+                                                "label"
+                                            ],
+                                            "allOf": [
+                                                {
+                                                    "if": {
+                                                        "required": [
+                                                            "inputPlaceholder"
+                                                        ]
+                                                    },
+                                                    "then": {
+                                                        "required": [
+                                                            "requiresTextInput"
+                                                        ],
+                                                        "properties": {
+                                                            "requiresTextInput": {
+                                                                "const": true
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ],
+                                            "properties": {
+                                                "value": {
+                                                    "type": "string",
+                                                    "minLength": 1,
+                                                    "maxLength": 500,
+                                                    "description": "Unique identifier for this option within the question. Used in the answer."
+                                                },
+                                                "label": {
+                                                    "type": "string",
+                                                    "minLength": 1,
+                                                    "maxLength": 500,
+                                                    "description": "Display text for this option."
+                                                },
+                                                "requiresTextInput": {
+                                                    "type": "boolean",
+                                                    "description": "Set true whenever selecting this option alone does not provide all information required to continue. This includes options that require a target, value, identifier, name, reason, description, correction, replacement, or other additional detail. Omitting this field asserts that the option is complete and immediately actionable as-is."
+                                                },
+                                                "inputPlaceholder": {
+                                                    "type": "string",
+                                                    "minLength": 1,
+                                                    "maxLength": 500,
+                                                    "description": "Placeholder text for the text input. Only valid when requiresTextInput=true."
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "multiple": {
+                                        "type": "boolean",
+                                        "description": "Allow selecting multiple options. Only valid when options are present."
+                                    },
+                                    "custom": {
+                                        "type": "boolean",
+                                        "description": "Allow a free-text answer alongside predefined options."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "ApiCall",
+                "description": "Invoke an external API declared in a Skill body. When a Skill contains an api command block (e.g. ```api\napi -name RAGRetriever -hiro ir\n```), use this tool to execute it. Provide apiName matching the -name value, hiro matching the -hiro value if present, plus headerParams and requestParams from context. The tool loads the API swagger YAML, extracts missing required parameters via the model, and executes the HTTP request.",
+                "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "apiName",
+                        "userQuestion",
+                        "requestParams"
+                    ],
+                    "properties": {
+                        "apiName": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128,
+                            "description": "API name from the parsed api command."
+                        },
+                        "hiro": {
+                            "type": "string",
+                            "maxLength": 16,
+                            "description": "Hiro value from the parsed api command."
+                        },
+                        "userQuestion": {
+                            "type": "string",
+                            "maxLength": 8192,
+                            "description": "Original user question from trusted context."
+                        },
+                        "headerParams": {
+                            "type": "object",
+                            "additionalProperties": true,
+                            "description": "Header params extracted from request headers."
+                        },
+                        "requestParams": {
+                            "type": "object",
+                            "additionalProperties": true,
+                            "description": "Request params from trusted context."
+                        },
+                        "skillName": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128,
+                            "description": "Skill capability id."
+                        },
+                        "skillVersion": {
+                            "type": "string",
+                            "description": "Skill version."
+                        },
+                        "providerId": {
+                            "type": "string",
+                            "description": "Skill provider id."
+                        },
+                        "sourceIdentity": {
+                            "type": "string",
+                            "description": "Skill source identity."
+                        },
+                        "frontmatterHash": {
+                            "type": "string",
+                            "description": "Skill frontmatter hash."
+                        },
+                        "skillBody": {
+                            "type": "string",
+                            "description": "Skill body content for parameter extraction context."
+                        },
+                        "passThroughFlag": {
+                            "type": "string",
+                            "description": "Pass-through flag from skill extension (_naie_pass_through_flag). When \"true\", skip parameter extraction."
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "search_memory",
+                "description": "Search the current user's ACTIVE long-term memory. See the memory strategy section for when to recall. Returns L1 summaries only; call get_memory_detail for full content.\n\nParameter guidance:\n- If the memory category is uncertain, make exactly one broad search without categoryFilter. Do not fan out by calling this once per category.\n- Use categoryFilter only when the user request clearly names a fact, concept, procedure, or user trait, or after one broad search is too noisy.\n- Do NOT use categoryFilter when the query spans multiple categories or the user's intent is exploratory.\n- categoryFilter=USER_CHARACTERISTICS requires a purpose field to filter effectively; omitting purpose returns all user traits.",
+                "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "queryText": {
+                            "type": "string",
+                            "maxLength": 512,
+                            "description": "Optional natural-language keyword query. Omit it (with categoryFilter set) to list every ACTIVE entry of that category for the current user — use this to load a category such as USER_CHARACTERISTICS up front instead of keyword-searching. When provided, only entries whose content contains the query words are returned, so do not pass a generic word (e.g. \"preferences\") when you want the whole category."
+                        },
+                        "categoryFilter": {
+                            "enum": [
+                                "FACTUAL",
+                                "CONCEPTUAL",
+                                "PROCEDURAL",
+                                "USER_CHARACTERISTICS"
+                            ],
+                            "description": "Optional precision filter. Omit when the memory category is uncertain; do not issue parallel searches over categories."
+                        },
+                        "purpose": {
+                            "enum": [
+                                "PERSONALIZATION",
+                                "TROUBLESHOOTING",
+                                "WORKFLOW_ADAPTATION",
+                                "GENERAL"
+                            ],
+                            "description": "Only use with categoryFilter=USER_CHARACTERISTICS. Ignored for other categories."
+                        },
+                        "minConfidence": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "description": "Optional confidence threshold. Omit unless the user explicitly asks for high-confidence memory."
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100,
+                            "description": "Maximum number of L1 memory results. Omit to use the default."
+                        },
+                        "offset": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 10000,
+                            "description": "Pagination offset. Omit for the first search."
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_memory_detail",
+                "description": "Fetch full L2 details for long-term memory entries returned by search_memory. Pass up to 20 longTermMemoryIds. Returns per-entry results with full structured fields such as procedural text or conceptual definitions.",
+                "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "longTermMemoryIds"
+                    ],
+                    "properties": {
+                        "longTermMemoryIds": {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 20,
+                            "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 128
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "add_memory",
+                "description": "Add a new ACTIVE long-term memory. See the memory strategy section for when to save.\n\nContent format by category:\n- FACTUAL → subject (string) + claim (string) + optional evidence (string[]) + optional qualifiers (string[])\n- CONCEPTUAL → concept (string) + definition (string) + optional aliases (string[]) + optional relatedConcepts (string[])\n- PROCEDURAL → procedureName (string) + procedureText (string)\n- USER_CHARACTERISTICS → traits (string[]) + purpose (string[])",
+                "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                        "category",
+                        "content"
+                    ],
+                    "properties": {
+                        "category": {
+                            "enum": [
+                                "FACTUAL",
+                                "CONCEPTUAL",
+                                "PROCEDURAL",
+                                "USER_CHARACTERISTICS"
+                            ]
+                        },
+                        "content": {
+                            "anyOf": [
+                                {
+                                    "type": "object",
+                                    "additionalProperties": true
+                                },
+                                {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2048
+                                }
+                            ]
+                        },
+                        "tags": {
+                            "type": "array",
+                            "maxItems": 20,
+                            "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 64
+                            }
+                        },
+                        "briefIndex": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 512
+                        },
+                        "confidence": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                        }
+                    }
+                }
+            }
+        }
+    ],
+    "status": "success"
+}
