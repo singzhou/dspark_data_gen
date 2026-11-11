@@ -7,6 +7,7 @@ Requires transformers. Example:
 
 Existing <think> blocks are moved into reasoning_content before rendering so the
 Qwen template emits each block once. All historical reasoning is retained.
+An output directory creates <input_stem>_text.jsonl inside that directory.
 """
 
 import argparse
@@ -107,12 +108,14 @@ def write_records(source, output, model, workers):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", type=Path)
-    parser.add_argument("output", type=Path)
+    parser.add_argument("output", type=Path, help="output file or existing directory")
     parser.add_argument("--model", default="/opt/models/Qwen3.8-27B", help="local model directory")
     parser.add_argument("--workers", type=int, default=1)
     args = parser.parse_args()
     if args.workers < 1:
         parser.error("--workers must be at least 1")
+    if args.output.is_dir():
+        args.output = args.output / f"{args.input.stem}_text.jsonl"
     if args.input.resolve() == args.output.resolve():
         parser.error("input and output must be different files")
 
