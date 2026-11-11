@@ -329,16 +329,16 @@ def write_batch(results, output):
             print(warning, file=sys.stderr)
 
 
-def write_records(source, output, workers):
+def write_records(source, output, workers, converter=convert_line):
     records = read_records(source)
     if workers == 1:
-        write_batch(map(convert_line, records), output)
+        write_batch(map(converter, records), output)
         return
 
     # Bound queued work while keeping input order and stable IDs.
     with ProcessPoolExecutor(max_workers=workers) as pool:
         while batch := list(islice(records, 32 * workers)):
-            write_batch(pool.map(convert_line, batch, chunksize=4), output)
+            write_batch(pool.map(converter, batch, chunksize=4), output)
 
 
 def main():
